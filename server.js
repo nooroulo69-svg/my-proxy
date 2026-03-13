@@ -2,6 +2,8 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 const app = express();
 
+express.urlencoded({ extended: true });
+
 let browser;
 
 async function getBrowser() {
@@ -21,14 +23,12 @@ async function getBrowser() {
   return browser;
 }
 
-app.get('/', async (req, res) => {
-  const url = req.query.url || 'https://wikipedia.org';
+async function handleRequest(url, res) {
   try {
     const b = await getBrowser();
     const page = await b.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    
-    // Rewrite all links to go through our proxy
+
     await page.evaluate(() => {
       document.querySelectorAll('a').forEach(a => {
         const href = a.getAttribute('href');
@@ -40,6 +40,7 @@ app.get('/', async (req, res) => {
         const action = form.getAttribute('action');
         if (action) {
           form.setAttribute('action', '/?url=' + encodeURIComponent(action));
+          form.setAttribute('method', 'get');
         }
       });
     });
@@ -50,6 +51,26 @@ app.get('/', async (req, res) => {
   } catch (err) {
     res.status(500).send('Error: ' + err.message);
   }
+}
+
+app.get('/', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await handleRequest(url, res);
+});
+
+app.post('/', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await handleRequest(url, res);
+});
+
+app.get('*', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await handleRequest(url, res);
+});
+
+app.post('*', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await handleRequest(url, res);
 });
 
 app.listen(8080, () => console.log('Proxy running on port 8080'));
