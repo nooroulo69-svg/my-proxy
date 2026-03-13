@@ -2,16 +2,33 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 const app = express();
 
-app.get('/', async (req, res) => {
-  const url = req.query.url || 'https://www.tiktok.com';
-  try {
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+let browser;
+
+async function getBrowser() {
+  if (!browser) {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      executablePath: '/usr/bin/chromium',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process'
+      ]
     });
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+  }
+  return browser;
+}
+
+app.get('/', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  try {
+    const b = await getBrowser();
+    const page = await b.newPage();
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
     const content = await page.content();
-    await browser.close();
+    await page.close();
     res.send(content);
   } catch (err) {
     res.status(500).send('Error: ' + err.message);
