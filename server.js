@@ -21,8 +21,7 @@ async function getBrowser() {
   return browser;
 }
 
-app.get('/', async (req, res) => {
-  const url = req.query.url || 'https://wikipedia.org';
+async function loadPage(url, res) {
   try {
     const b = await getBrowser();
     const page = await b.newPage();
@@ -33,6 +32,21 @@ app.get('/', async (req, res) => {
   } catch (err) {
     res.status(500).send('Error: ' + err.message);
   }
+}
+
+app.get('/', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await loadPage(url, res);
+});
+
+app.post('*', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await loadPage(url, res);
+});
+
+app.get('*', async (req, res) => {
+  const url = req.query.url || 'https://wikipedia.org';
+  await loadPage(url, res);
 });
 
 app.listen(8080, () => console.log('Proxy running on port 8080'));
